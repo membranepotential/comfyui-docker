@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
   python3.12 \
   python3-pip \
   python3.12-dev \
+  python3-venv \
   git \
   wget \
   curl \

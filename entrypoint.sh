@@ -114,13 +114,31 @@ fetch_external() {
 	echo "   🎯 External downloads processing complete"
 }
 
+# Setup Python virtual environment
+setup_venv() {
+	echo ""
+	echo "🐍 Setting up Python virtual environment..."
+
+	local venv_dir="/app/venv"
+
+	if [ ! -f "$venv_dir/bin/activate" ]; then
+		echo "   📁 Creating virtual environment at $venv_dir..."
+		mkdir -p "$venv_dir"
+		python -m venv --system-site-packages "$venv_dir"
+	else
+		echo "   ✅ Virtual environment already exists at $venv_dir"
+	fi
+
+	source "$venv_dir/bin/activate"
+}
+
 # Function to install requirements for custom nodes
 install_requirements() {
 	echo ""
 	echo "📦 Installing custom node requirements..."
 
 	local custom_nodes_dir="/app/custom_nodes"
-	
+
 	if [ ! -d "$custom_nodes_dir" ]; then
 		echo "   ℹ️  No custom_nodes directory found, skipping requirements installation"
 		return 0
@@ -137,11 +155,11 @@ install_requirements() {
 			if [ -f "$requirements_file" ]; then
 				found_requirements=true
 				echo "   📁 Found requirements.txt in: $node_name"
-				
+
 				# Check if requirements.txt has content
 				if [ -s "$requirements_file" ]; then
 					echo "      ⬇️  Installing requirements for $node_name..."
-					
+
 					if pip install -r "$requirements_file"; then
 						echo "      ✅ Successfully installed requirements for $node_name"
 					else
@@ -220,6 +238,7 @@ main() {
 	fetch_external
 
 	# Install requirements for custom nodes
+	setup_venv
 	install_requirements
 
 	# Show system information
