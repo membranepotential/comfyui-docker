@@ -38,18 +38,22 @@ cd comfyui-docker
 mkdir -p models output custom_nodes input workflows
 ```
 
-3. **Start ComfyUI:**
+3. **(Optional) Configure automatic downloads:**
+
+Edit config.yaml to add your desired models and custom nodes
+
+4. **Start ComfyUI:**
 
 ```bash
 docker-compose up -d
 ```
 
-4. **Access ComfyUI:**
+5. **Access ComfyUI:**
    - Open your browser to: **http://localhost:8188**
 
-> **💡 Smart Initialization:** On first run, the container automatically copies ComfyUI's default models and custom nodes to your mounted directories. This means you'll have all the default content that ships with ComfyUI, while keeping your data persistent across container updates.
+> **💡 Smart Initialization:** On first run, the container automatically copies ComfyUI's default models and custom nodes to your mounted directories. If you've configured `config.yaml`, it will also download your specified models and clone custom nodes. This means you'll have all the default content plus your additions, while keeping your data persistent across container updates.
 
-5. **View logs (optional):**
+6. **View logs (optional):**
 
 ```bash
 docker-compose logs -f comfyui
@@ -114,6 +118,26 @@ docker-compose up -d
    cd ..
    docker-compose restart comfyui
    ```
+
+### Automated Downloads with config.yaml
+
+For automated downloading of models and custom nodes, edit the `config.yaml` file:
+
+```yaml
+models:
+  checkpoints:
+    - "https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors"
+  vae:
+    - "https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors"
+  loras:
+    - "https://civitai.com/api/download/models/example-lora.safetensors"
+
+custom_nodes:
+  - "https://github.com/ltdrdata/ComfyUI-Manager.git"
+  - "https://github.com/Fannovel16/comfyui_controlnet_aux.git"
+```
+
+> **💡 Smart Downloads:** The container automatically downloads models and clones custom nodes specified in `config.yaml` on startup. Files are only downloaded if they don't already exist, making restarts fast and safe.
 
 ## Configuration
 

@@ -24,9 +24,9 @@ copy_defaults() {
 
 			# Copy all contents from source to target, don't overwrite existing files
 			if cp -rn "$source_dir"/* "$target_dir/" 2>/dev/null; then
-				echo "   ✅ Successfully copied default $dir_name"
+				echo "   ✅ Successfully copied default $source_dir"
 			else
-				echo "   ⚠️  No default $dir_name found or failed to copy"
+				echo "   ⚠️  No default $source_dir found or failed to copy"
 			fi
 
 			# Set proper permissions
@@ -42,6 +42,76 @@ copy_defaults() {
 	else
 		echo "   ⚠️  Source or target directory not found"
 	fi
+}
+
+# Function to fetch external resources from config.yaml
+fetch_external() {
+	local config_file="/app/config.yaml"
+
+	echo ""
+	echo "🌐 Checking for external downloads configuration..."
+
+	if [ ! -f "$config_file" ]; then
+		echo "   ℹ️  No config.yaml found, skipping external downloads"
+		return 0
+	fi
+
+	echo "   📋 Found config.yaml, processing external downloads..."
+
+	# Process models section
+	if yq '.models' "$config_file" >/dev/null 2>&1 && [ "$(yq '.models' "$config_file")" != "null" ]; then
+		echo "   📁 Processing models downloads..."
+
+		# Get all keys under models
+		yq -r '.models | keys | .[]' "$config_file" | while read -r model_type; do
+			echo "      └── Processing $model_type..."
+
+			# Create directory if it doesn't exist
+			mkdir -p "/app/models/$model_type"
+
+			# Get URLs for this model type
+			yq -r "try .models.$model_type[]" "$config_file" | while read -r url; do
+				if [ -n "$url" ] && [ "$url" != "null" ]; then
+					local filename=$(basename "$url")
+					local filepath="/app/models/$model_type/$filename"
+
+					echo "         ⬇️  Downloading: $filename"
+					if wget -q --show-progress --progres=dot:giga -c -O "$filepath" "$url"; then
+						echo "         ✅ Downloaded: $filename"
+					else
+						echo "         ❌ Failed to download: $filename"
+						rm -f "$filepath" 2>/dev/null || true
+					fi
+				fi
+			done
+		done
+	fi
+
+	# Process custom_nodes section
+	if yq '.custom_nodes' "$config_file" >/dev/null 2>&1 && [ "$(yq '.custom_nodes' "$config_file")" != "null" ]; then
+		echo "   🔧 Processing custom nodes downloads..."
+
+		yq -r 'try .custom_nodes[]' "$config_file" | while read -r url; do
+			if [ -n "$url" ] && [ "$url" != "null" ]; then
+				local repo_name=$(basename "$url" .git)
+				local clone_path="/app/custom_nodes/$repo_name"
+
+				if [ ! -d "$clone_path" ]; then
+					echo "      ⬇️  Cloning: $repo_name"
+					if git clone "$url" "$clone_path"; then
+						echo "      ✅ Cloned: $repo_name"
+					else
+						echo "      ❌ Failed to clone: $repo_name"
+						rm -rf "$clone_path" 2>/dev/null || true
+					fi
+				else
+					echo "      ✅ Already exists: $repo_name"
+				fi
+			fi
+		done
+	fi
+
+	echo "   🎯 External downloads processing complete"
 }
 
 # Function to display system information
@@ -98,6 +168,9 @@ main() {
 
 		copy_defaults "/app/$dir" "/app/${dir}_default"
 	done
+
+	# Fetch external resources
+	fetch_external
 
 	# Show system information
 	show_system_info

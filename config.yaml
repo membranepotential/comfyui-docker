@@ -1,0 +1,26 @@
+# External Downloads Configuration for ComfyUI Docker
+# This file configures automatic downloads of models and custom nodes
+
+# Models: Https urls
+models:
+  checkpoints:
+    # - https://huggingface.co/stabilityai/stable-diffusion-2-1/resolve/main/v2-1_768-ema-pruned.safetensors
+
+  clip:
+  clip_vision:
+  controlnet:
+  diffusion_models:
+  diffusers:
+  embeddings:
+  hypernetworks:
+  loras:
+  style_models:
+  text_encoders:
+  unet:
+  upscale_models:
+  vae:
+  vae_approx:
+
+# Custom nodes: Git repositories
+custom_nodes:
+  # - https://github.com/ltdrdata/ComfyUI-Manager.git

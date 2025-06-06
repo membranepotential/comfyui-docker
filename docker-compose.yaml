@@ -21,6 +21,7 @@ services:
       - ./custom_nodes:/app/custom_nodes
       - ./input:/app/input
       - ./user:/app/user
+      - ./config.yaml:/app/config.yaml
 
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
