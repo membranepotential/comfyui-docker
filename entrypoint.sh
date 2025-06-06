@@ -29,12 +29,13 @@ copy_defaults() {
 				echo "   ⚠️  No default $dir_name found or failed to copy"
 			fi
 
-			# Set proper permissions (try to match the user running the container)
-			# if [ -w "$target_dir" ]; then
-			# 	chown -R $(id -u):$(id -g) "$target_dir" 2>/dev/null || true
-			# 	chmod -R 755 "$target_dir" 2>/dev/null || true
-			# 	echo "   ✅ Permissions updated"
-			# fi
+			# Set proper permissions
+			if [ -w "$target_dir" ]; then
+				local owner=$(stat -c '%u:%g' "$target_dir")
+				chown -R "$owner" "$target_dir" 2>/dev/null || true
+				chmod -R 755 "$target_dir" 2>/dev/null || true
+				echo "   ✅ Permissions updated"
+			fi
 		else
 			echo "   ✅ Directory contains files, preserving existing content"
 		fi
@@ -135,7 +136,7 @@ main() {
 
 	# Execute ComfyUI with all passed arguments
 	# Use exec to replace the shell process with ComfyUI
-	exec python main.py "${comfyui_args[@]}"
+	exec python main.py --listen 0.0.0.0 "${comfyui_args[@]}"
 }
 
 main "$@"
