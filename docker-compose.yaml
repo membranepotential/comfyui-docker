@@ -31,6 +31,9 @@ services:
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - PYTHONUNBUFFERED=1
 
+    env_file:
+      - ./.env
+
     # Optional: Custom command arguments
     # command: ["--cpu", "--port", "8188"]
 
