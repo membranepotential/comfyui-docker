@@ -45,8 +45,9 @@ docker-compose up -d
 ```
 
 4. **Access ComfyUI:**
-
    - Open your browser to: **http://localhost:8188**
+
+> **💡 Smart Initialization:** On first run, the container automatically copies ComfyUI's default models and custom nodes to your mounted directories. This means you'll have all the default content that ships with ComfyUI, while keeping your data persistent across container updates.
 
 5. **View logs (optional):**
 
