@@ -2,6 +2,7 @@ services:
   comfyui:
     build: .
     container_name: comfyui
+    tty: true
     restart: unless-stopped
 
     deploy:
