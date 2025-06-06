@@ -10,6 +10,9 @@ echo "=========================================="
 
 # Function to copy default contents from ComfyUI repository
 copy_defaults() {
+	local file_count
+	local owner
+
 	local target_dir="$1"
 	local source_dir="$2"
 
@@ -17,7 +20,7 @@ copy_defaults() {
 
 	if [ -d "$source_dir" ] && [ -d "$target_dir" ]; then
 		# Check if target directory is empty or only contains subdirectories we created
-		local file_count=$(find "$target_dir" -mindepth 1 -type f 2>/dev/null | wc -l)
+		file_count=$(find "$target_dir" -mindepth 1 -type f 2>/dev/null | wc -l)
 
 		if [ "$file_count" -eq 0 ]; then
 			echo "   └── Empty directory detected, copying ComfyUI defaults..."
@@ -31,7 +34,7 @@ copy_defaults() {
 
 			# Set proper permissions
 			if [ -w "$target_dir" ]; then
-				local owner=$(stat -c '%u:%g' "$target_dir")
+				owner=$(stat -c '%u:%g' "$target_dir")
 				chown -R "$owner" "$target_dir" 2>/dev/null || true
 				chmod -R 755 "$target_dir" 2>/dev/null || true
 				echo "   ✅ Permissions updated"
@@ -46,6 +49,9 @@ copy_defaults() {
 
 # Function to fetch external resources from config.yaml
 fetch_external() {
+	local filename
+	local repo_name
+
 	local config_file="/app/config.yaml"
 
 	echo ""
@@ -72,7 +78,7 @@ fetch_external() {
 			# Get URLs for this model type
 			yq -r "try .models.$model_type[]" "$config_file" | while read -r url; do
 				if [ -n "$url" ] && [ "$url" != "null" ]; then
-					local filename=$(basename "$url")
+					filename=$(basename "$url")
 					local filepath="/app/models/$model_type/$filename"
 
 					echo "         ⬇️  Downloading: $filename"
@@ -93,7 +99,7 @@ fetch_external() {
 
 		yq -r 'try .custom_nodes[]' "$config_file" | while read -r url; do
 			if [ -n "$url" ] && [ "$url" != "null" ]; then
-				local repo_name=$(basename "$url" .git)
+				repo_name=$(basename "$url" .git)
 				local clone_path="/app/custom_nodes/$repo_name"
 
 				if [ ! -d "$clone_path" ]; then
@@ -132,8 +138,26 @@ setup_venv() {
 	source "$venv_dir/bin/activate"
 }
 
-# Function to install requirements for custom nodes
 install_requirements() {
+	local requirements="$1"
+	local name="$2"
+
+	echo ""
+	echo "📦 Installing requirements for $name..."
+
+	# Check if requirements.txt exists
+	if pip install -r "$requirements"; then
+		echo "   ✅ Successfully installed requirements for $name"
+	else
+		echo "   ❌ Failed to install requirements for $name"
+		exit 1
+	fi
+}
+
+# Function to install requirements for custom nodes
+install_custom_node_requirements() {
+	local node_name
+
 	echo ""
 	echo "📦 Installing custom node requirements..."
 
@@ -149,25 +173,12 @@ install_requirements() {
 	# Iterate through all subdirectories in custom_nodes
 	for node_dir in "$custom_nodes_dir"/*; do
 		if [ -d "$node_dir" ]; then
-			local node_name=$(basename "$node_dir")
+			node_name=$(basename "$node_dir")
 			local requirements_file="$node_dir/requirements.txt"
 
 			if [ -f "$requirements_file" ]; then
 				found_requirements=true
-				echo "   📁 Found requirements.txt in: $node_name"
-
-				# Check if requirements.txt has content
-				if [ -s "$requirements_file" ]; then
-					echo "      ⬇️  Installing requirements for $node_name..."
-
-					if pip install -r "$requirements_file"; then
-						echo "      ✅ Successfully installed requirements for $node_name"
-					else
-						echo "      ❌ Failed to install requirements for $node_name"
-					fi
-				else
-					echo "      ℹ️  Empty requirements.txt in $node_name, skipping"
-				fi
+				install_requirements "$requirements_file" "$node_name"
 			fi
 		fi
 	done
@@ -181,6 +192,9 @@ install_requirements() {
 
 # Function to display system information
 show_system_info() {
+	local cuda_available
+	local gpu_count
+
 	echo ""
 	echo "💻 System Information:"
 	echo "   📦 Container User: $(whoami) (UID: $(id -u), GID: $(id -g))"
@@ -198,9 +212,9 @@ show_system_info() {
 		echo "   🎯 CUDA Version: $(nvcc --version 2>/dev/null | grep 'release' | awk '{print $6}' | cut -c2- || echo 'Not available')"
 
 		# Check PyTorch CUDA
-		local cuda_available=$(python -c 'import torch; print(torch.cuda.is_available())' 2>/dev/null || echo 'false')
+		cuda_available=$(python -c 'import torch; print(torch.cuda.is_available())' 2>/dev/null || echo 'false')
 		if [ "$cuda_available" = "True" ]; then
-			local gpu_count=$(python -c 'import torch; print(torch.cuda.device_count())' 2>/dev/null || echo '0')
+			gpu_count=$(python -c 'import torch; print(torch.cuda.device_count())' 2>/dev/null || echo '0')
 			echo "   ⚡ PyTorch CUDA: Available ($gpu_count GPU(s) detected)"
 		else
 			echo "   ⚠️  PyTorch CUDA: Not available (will use CPU)"
@@ -239,7 +253,8 @@ main() {
 
 	# Install requirements for custom nodes
 	setup_venv
-	install_requirements
+	install_requirements "/app/requirements.txt" "mounted requirements.txt"
+	install_custom_node_requirements
 
 	# Show system information
 	show_system_info
