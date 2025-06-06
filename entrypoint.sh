@@ -135,7 +135,7 @@ main() {
 
 	# Execute ComfyUI with all passed arguments
 	# Use exec to replace the shell process with ComfyUI
-	exec python main.py --listen 0.0.0.0 --port 8188 "${comfyui_args[@]}"
+	exec python main.py "${comfyui_args[@]}"
 }
 
 main "$@"
