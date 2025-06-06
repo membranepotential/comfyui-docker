@@ -114,6 +114,53 @@ fetch_external() {
 	echo "   🎯 External downloads processing complete"
 }
 
+# Function to install requirements for custom nodes
+install_requirements() {
+	echo ""
+	echo "📦 Installing custom node requirements..."
+
+	local custom_nodes_dir="/app/custom_nodes"
+	
+	if [ ! -d "$custom_nodes_dir" ]; then
+		echo "   ℹ️  No custom_nodes directory found, skipping requirements installation"
+		return 0
+	fi
+
+	local found_requirements=false
+
+	# Iterate through all subdirectories in custom_nodes
+	for node_dir in "$custom_nodes_dir"/*; do
+		if [ -d "$node_dir" ]; then
+			local node_name=$(basename "$node_dir")
+			local requirements_file="$node_dir/requirements.txt"
+
+			if [ -f "$requirements_file" ]; then
+				found_requirements=true
+				echo "   📁 Found requirements.txt in: $node_name"
+				
+				# Check if requirements.txt has content
+				if [ -s "$requirements_file" ]; then
+					echo "      ⬇️  Installing requirements for $node_name..."
+					
+					if pip install -r "$requirements_file"; then
+						echo "      ✅ Successfully installed requirements for $node_name"
+					else
+						echo "      ❌ Failed to install requirements for $node_name"
+					fi
+				else
+					echo "      ℹ️  Empty requirements.txt in $node_name, skipping"
+				fi
+			fi
+		fi
+	done
+
+	if [ "$found_requirements" = false ]; then
+		echo "   ℹ️  No requirements.txt files found in custom nodes"
+	fi
+
+	echo "   🎯 Requirements installation complete"
+}
+
 # Function to display system information
 show_system_info() {
 	echo ""
@@ -171,6 +218,9 @@ main() {
 
 	# Fetch external resources
 	fetch_external
+
+	# Install requirements for custom nodes
+	install_requirements
 
 	# Show system information
 	show_system_info
