@@ -23,4 +23,4 @@ models:
 
 # Custom nodes: Git repositories
 custom_nodes:
-  # - https://github.com/ltdrdata/ComfyUI-Manager.git
+  - https://github.com/ltdrdata/ComfyUI-Manager.git
