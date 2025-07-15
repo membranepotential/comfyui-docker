@@ -76,7 +76,7 @@ fetch_external() {
 			mkdir -p "/app/models/$model_type"
 
 			# Get URLs for this model type
-			yq -r "try .models.$model_type[]" "$config_file" | while read -r url; do
+			yq -r "try .models.${model_type}[]" "$config_file" | while read -r url; do
 				if [ -n "$url" ] && [ "$url" != "null" ]; then
 					filename=$(basename "$url")
 					local filepath="/app/models/$model_type/$filename"
@@ -190,18 +190,8 @@ install_custom_node_requirements() {
 	echo "   🎯 Requirements installation complete"
 }
 
-# Function to display system information
-show_system_info() {
-	local cuda_available
-	local gpu_count
-
-	echo ""
-	echo "💻 System Information:"
-	echo "   📦 Container User: $(whoami) (UID: $(id -u), GID: $(id -g))"
-	echo "   🐍 Python Version: $(python --version 2>&1)"
-	echo "   🔥 PyTorch Version: $(python -c 'import torch; print(torch.__version__)' 2>/dev/null || echo 'Not available')"
-
-	# Check CUDA availability
+# Exit with error if CUDA is not available
+validate_cuda() {
 	if command -v nvidia-smi >/dev/null 2>&1; then
 		echo "   🚀 NVIDIA Driver Info:"
 		nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader,nounits 2>/dev/null |
@@ -210,22 +200,31 @@ show_system_info() {
 			done
 
 		echo "   🎯 CUDA Version: $(nvcc --version 2>/dev/null | grep 'release' | awk '{print $6}' | cut -c2- || echo 'Not available')"
-
-		# Check PyTorch CUDA
-		cuda_available=$(python -c 'import torch; print(torch.cuda.is_available())' 2>/dev/null || echo 'false')
-		if [ "$cuda_available" = "True" ]; then
-			gpu_count=$(python -c 'import torch; print(torch.cuda.device_count())' 2>/dev/null || echo '0')
-			echo "   ⚡ PyTorch CUDA: Available ($gpu_count GPU(s) detected)"
-		else
-			echo "   ⚠️  PyTorch CUDA: Not available (will use CPU)"
-		fi
 	else
-		echo "   ⚠️  NVIDIA GPU: Not detected or nvidia-smi not available"
-		echo "   💾 Will run in CPU mode"
+		echo "   ❌ NVIDIA GPU not detected or nvidia-smi command not available"
+		exit 1
+	fi
+}
+
+# Exit with error if torch has no CUDA support
+validate_torch_cuda() {
+	local cuda_available
+	local gpu_count
+
+	cuda_available=$(python -c 'import torch; print(torch.cuda.is_available())' 2>/dev/null || echo 'false')
+	if [ "$cuda_available" = "True" ]; then
+		gpu_count=$(python -c 'import torch; print(torch.cuda.device_count())' 2>/dev/null || echo '0')
+		echo "   ⚡ PyTorch CUDA: Available ($gpu_count GPU(s) detected)"
+	else
+		echo "   ❌ PyTorch CUDA: Not available (will use CPU)"
+		exit 1
 	fi
 }
 
 main() {
+	# Check CUDA availability
+	validate_cuda
+
 	# Change to ComfyUI directory
 	cd /app
 
@@ -256,20 +255,11 @@ main() {
 	install_requirements "/app/requirements.txt" "mounted requirements.txt"
 	install_custom_node_requirements
 
-	# Show system information
-	show_system_info
+	# Validate PyTorch CUDA support
+	validate_torch_cuda
 
 	# Parse command line arguments for special handling
 	local comfyui_args=("$@")
-	local cpu_mode=false
-
-	for arg in "$@"; do
-		case $arg in
-		--cpu)
-			cpu_mode=true
-			;;
-		esac
-	done
 
 	echo ""
 	echo "🚀 Starting ComfyUI Server..."
@@ -277,12 +267,6 @@ main() {
 	echo "   📁 Models directory: /app/models"
 	echo "   📸 Output directory: /app/output"
 	echo "   🔧 Custom nodes: /app/custom_nodes"
-
-	if [ "$cpu_mode" = true ]; then
-		echo "   💾 Mode: CPU (GPU disabled)"
-	else
-		echo "   ⚡ Mode: GPU accelerated"
-	fi
 
 	echo "   📋 Arguments: ${comfyui_args[*]:-'(default)'}"
 	echo ""
